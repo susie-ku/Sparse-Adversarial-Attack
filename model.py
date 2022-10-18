@@ -27,7 +27,7 @@ class CifarNet(nn.Module):
         x = self.relu(self.conv4(x))
         x = self.pool(x)
 
-        x = x.view(-1, 3200)
+        x = x.reshape(-1, 3200)
         x = self.relu(self.fc1(x))
         x = self.dropout(x)
         
