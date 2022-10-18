@@ -90,7 +90,7 @@ def batch_train(model, img_file):
 
     for index in range(min(segments.flatten()),max(segments.flatten())+1):
         mask = (segments == index)
-        B[index,:,mask] = 1
+        B[index - 1,:,mask] = 1
     B = torch.from_numpy(B).cuda().float()        
     noise_Weight = compute_sensitive(scaled_image, args.weight_type)      
     print('target sparse k : {}'.format(args.k))
