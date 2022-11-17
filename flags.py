@@ -28,6 +28,8 @@ def parse_handle():
     parser.add_argument('--target', type=int, default=0, help='target for the attack')
    
     parser.add_argument('--img_file', type=str, default='img0.npy', help='origin image for the attack')
+
+    parser.add_argument('--img_path', type=str, default='/media/ssd-3t/hdd/cifar-10-batches-py/test_batch', help='origin path of images for the attack')
     
 
     # parameters for image preprocessing

@@ -33,7 +33,7 @@ img_mean_cuda = torch.from_numpy(img_mean).cuda()
 img_std_cuda = torch.from_numpy(img_std).cuda()
 img_normalized_ops = (img_mean_cuda, img_std_cuda)
 
-def main():
+def main(input_image, label_init):
     # define model and move it cuda
     model = CifarNet().eval().cuda()
     model.load_state_dict(torch.load(args.attacked_model))
@@ -41,15 +41,16 @@ def main():
     # freeze model parameters
     for param in model.parameters():
         param.requires_grad = False
-    
-    img_file = args.img_file
 
     # training
-    batch_train(model, img_file)
+    num_success, success_init, noise_label = batch_train(model, input_image, label_init)
+    return num_success, success_init, noise_label
 
-def batch_train(model, img_file):  
+def batch_train(model, input_image, label_init):  
     num_success = 0.0
-    counter =0.0
+    success_init = 0.0
+    counter = 0.0
+    counter_acc = 0.0
     L0 = 0.0
     L1 = 0.0
     L2 = 0.0
@@ -60,9 +61,9 @@ def batch_train(model, img_file):
 
     cur_start_time = time.time()
     # load image and preprocessing
-    print('Image:{}'.format(img_file))
-    input_image = Image.open(img_file)
+
     input_image = input_image.resize((args.img_resized_width, args.img_resized_height))
+    
     
     #calculate mask for group sparsity
     image_4_mask = np.array(input_image, dtype=np.uint8)  
@@ -85,20 +86,22 @@ def batch_train(model, img_file):
 
     label_gt = int(torch.argmax(model(scaled_image-0.5)).data)
     label_target = args.target
-    assert label_gt != label_target, 'Target label and ground truth label are same, choose another target label.'
-    print('Origin Label:{}, Target Label:{}'.format(label_gt, label_target))
+    if label_gt == label_target:
+        label_target += 1
+    # assert label_gt != label_target, 'Target label and ground truth label are same, choose another target label.'
+    # print('Origin Label:{}, Target Label:{}'.format(label_gt, label_target))
 
     for index in range(min(segments.flatten()),max(segments.flatten())+1):
         mask = (segments == index)
         B[index - 1,:,mask] = 1
     B = torch.from_numpy(B).cuda().float()        
     noise_Weight = compute_sensitive(scaled_image, args.weight_type)      
-    print('target sparse k : {}'.format(args.k))
-    
+    # print('target sparse k : {}'.format(args.k))
+
     #train
-    results = train_adptive(int(0), model, scaled_image, label_target, B, noise_Weight)
+    results = train_adptive(int(0), model, scaled_image, label_target, label_gt, B, noise_Weight)
     results['args'] = vars(args)  
-    results['img_name'] = img_file
+    # results['img_name'] = args.
     results['running_time'] = time.time() - cur_start_time
     results['ground_truth'] = label_gt
     results['label_target'] = label_target
@@ -108,7 +111,12 @@ def batch_train(model, img_file):
     # logging brief summary
     counter +=1
     if results['status'] == True:
-        num_success = num_success + 1
+        num_success = 1.0
+    if label_gt == label_init:
+        success_init = 1.0
+    if results['noise_label'][0] == label_init:
+        counter_acc = 1.0
+
     
     # statistic for norm
     L0 += results['L0']
@@ -122,20 +130,21 @@ def batch_train(model, img_file):
     # save metaInformation and results to logfile
     save_results(results, args)
     
-    print('#'*30)
-    print('image=%s, clean-img-prediction=%d, target-attack-class=%d, adversarial-image-prediction=%d' \
-            %(results['img_name'], label_gt,label_target,results['noise_label'][0]))
-    print('statistic information: success-attack-image/total-attack-image= %d/%d, attack-success-rate=%f, L0=%f, L1=%f, L2=%f, L-inf=%f' \
-            %(num_success, counter , num_success/counter, L0/counter, L1/counter, L2/counter, Li/counter))
-    print('#'*30+'\n'*2)
+    # print('#'*30)
+    # print(' clean-img-prediction=%d, target-attack-class=%d, adversarial-image-prediction=%d' \
+            # %(label_gt,label_target,results['noise_label'][0]))
+    # print('statistic information: success-attack-image/total-attack-image= %d/%d, attack-success-rate=%f, L0=%f, L1=%f, L2=%f, L-inf=%f' \
+            # %(num_success, counter , num_success/counter, L0/counter, L1/counter, L2/counter, Li/counter))
+    # print('#'*30+'\n'*2)
+    return num_success, success_init, counter_acc
 
-def train_adptive(i, model, images, target, B, noise_Weight):
+def train_adptive(i, model, images, target, label_gt, B, noise_Weight):
     args.lambda1 = args.init_lambda1
     lambda1_upper_bound = args.lambda1_upper_bound
     lambda1_lower_bound = args.lambda1_lower_bound
     results_success_list=[]
     for search_time in range(1, args.lambda1_search_times+1):
-        results = train_sgd_atom(model, images, target, B, noise_Weight)
+        results = train_sgd_atom(model, images, target, label_gt, B, noise_Weight)
         results['lambda1'] = args.lambda1
 
         if results['status'] == True:
@@ -166,7 +175,7 @@ def train_adptive(i, model, images, target, B, noise_Weight):
         return results
 
         
-def train_sgd_atom(model, images, target_label, B, noise_Weight):
+def train_sgd_atom(model, images, target_label, label_gt, B, noise_Weight):
     target_label_tensor=torch.tensor([target_label]).cuda()
 
     G = torch.ones(images.shape, dtype=torch.float32).cuda()
@@ -190,10 +199,10 @@ def train_sgd_atom(model, images, target_label, B, noise_Weight):
     noise_label, adv_image = compute_predictions_labels(model, images, epsilon, G, args, img_normalized_ops)
     
     # recording results per iteration
-    if noise_label[0] == target_label:
+    if label_gt != noise_label[0]:
         results_status=True
     else:
-        results_status=False  
+        results_status=False
 
     results = {
         'status': results_status,
