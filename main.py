@@ -43,8 +43,8 @@ def main(input_image, label_init):
         param.requires_grad = False
 
     # training
-    num_success, success_init, noise_label = batch_train(model, input_image, label_init)
-    return num_success, success_init, noise_label
+    num_success, success_init, counter_acc = batch_train(model, input_image, label_init)
+    return num_success, success_init, counter_acc
 
 def batch_train(model, input_image, label_init):  
     num_success = 0.0
@@ -88,11 +88,14 @@ def batch_train(model, input_image, label_init):
     label_target = args.target
     if label_gt == label_target:
         label_target += 1
+    if label_init == label_target:
+        label_target += 1
     # assert label_gt != label_target, 'Target label and ground truth label are same, choose another target label.'
     # print('Origin Label:{}, Target Label:{}'.format(label_gt, label_target))
 
     for index in range(min(segments.flatten()),max(segments.flatten())+1):
         mask = (segments == index)
+        print(mask.shape)
         B[index - 1,:,mask] = 1
     B = torch.from_numpy(B).cuda().float()        
     noise_Weight = compute_sensitive(scaled_image, args.weight_type)      

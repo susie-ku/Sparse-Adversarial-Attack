@@ -22,8 +22,8 @@ def Normalization(x, mean_std):
     return result
 
 def compute_loss(model, images, target, epsilon, G, args, imgnet_normalized_ops, B, noise_Weight):
-
-    # compute L2 loss of |e*G|_2^2 (L2 square for easy grad calculation)
+    
+    # # compute L2 loss of |e*G|_2^2 (L2 square for easy grad calculation)
     l2_loss = (torch.norm(G*epsilon*noise_Weight, 2).item())**2  
     
     # compute cnn-loss (cross-entropy loss)

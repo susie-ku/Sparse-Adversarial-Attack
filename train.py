@@ -14,18 +14,14 @@ img_path = args.img_path
 with open(img_path, 'rb') as fo:
         dictio = pickle.load(fo, encoding='bytes')
 
-print(dictio.keys())
-
-red = np.array(dictio[b'data'][:, :1024])
-green = np.array(dictio[b'data'][:, 1024:2048])
-blue = np.array(dictio[b'data'][:, 2048:])
+img_num = int(args.img_num)
 
 labels = np.array(dictio[b'labels'])
 
 num_success_array = np.array([])
 success_init_array = np.array([])
 counter_acc_array = np.array([])
-for i in tqdm(range(10000)):
+for i in tqdm(range(img_num)):
         img = np.reshape(dictio[b'data'][i], (3,32,32))
         img = np.transpose(img, (1,2,0))
         input_image = Image.fromarray(img)

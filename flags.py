@@ -11,7 +11,7 @@ def parse_handle():
 
     parser.add_argument('--attacked_model', type=str, default='cifar_best.pth', help='the checkpoint to be attacked')	
     
-    parser.add_argument('--gpu_id', type=str, default="0", help='whether to use GPU, if none, then use cpu, or use the gpu with gpu_id')
+    parser.add_argument('--gpu_id', type=str, default="1", help='whether to use GPU, if none, then use cpu, or use the gpu with gpu_id')
     
     parser.add_argument('--json_root', type=str, default='./jsons', help='result folder, save result per sample')
     
@@ -30,6 +30,8 @@ def parse_handle():
     parser.add_argument('--img_file', type=str, default='img0.npy', help='origin image for the attack')
 
     parser.add_argument('--img_path', type=str, default='/media/ssd-3t/hdd/cifar-10-batches-py/test_batch', help='origin path of images for the attack')
+
+    parser.add_argument('--img_num', type=str, default=100, help='number of attacked imaged')
     
 
     # parameters for image preprocessing
@@ -49,6 +51,10 @@ def parse_handle():
     parser.add_argument('--categories', type=int, default=10, help='dataset categories: imagenet=1000, cifar10=10')
     
     parser.add_argument('--segments', type=int, default=150, help='split the mask into several blocks for structure attack')
+
+    parser.add_argument('--kernel_width', type=int, default=4, help='kernel width for image_split')
+
+    parser.add_argument('--kernel_height', type=int, default=4, help='kernel height for image_split')
 
 
     #learning rate for G and epsion
